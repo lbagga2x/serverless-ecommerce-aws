@@ -223,8 +223,8 @@ aws lambda update-function-code \
 
 - [x] Products CRUD API with DynamoDB
 - [x] User authentication with Cognito
-- [ ] Orders service with RDS Aurora
-- [ ] Async order processing with SQS
+- [x] Orders service with RDS Aurora
+- [x] Async order processing with SQS
 - [ ] Order fulfillment workflow with Step Functions
 - [ ] API Gateway authorizers for protected routes
 - [ ] CloudWatch dashboards and alarms
