@@ -2,14 +2,20 @@
  * @Author: Lalit Bagga 
  * @Date: 2026-02-08 12:34:28 
  * @Last Modified by: Lalit Bagga
- * @Last Modified time: 2026-02-08 18:46:57
+ * @Last Modified time: 2026-02-10 16:08:26
  */
 const mysql = require('mysql2/promise');
-const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
+// const { SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs');
 
-const sqs = new SQSClient({ region: 'us-east-1', requestHandler: {
-    connectionTimeout: 2000
-  } });
+// const sqs = new SQSClient({ region: 'us-east-1', requestHandler: {
+//     connectionTimeout: 2000
+//   } });
+
+  const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+  const { DynamoDBDocumentClient, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+          
+  const dynamoClient = new DynamoDBClient({ region: 'us-east-1' });
+  const dynamo = DynamoDBDocumentClient.from(dynamoClient);
 
 
 const pool = mysql.createPool({
@@ -88,23 +94,96 @@ exports.handler = async (event) => {
         await connection.commit();
         
         // 4. Send to SQS for async processing
-        if (process.env.ORDER_QUEUE_URL) {
-          try {
-            await sqs.send(new SendMessageCommand({
-              QueueUrl: process.env.ORDER_QUEUE_URL,
-              MessageBody: JSON.stringify({
-                orderId,
-                userId,
-                userEmail,
-                items,
-                total
-              })
-            }));
-            console.log(`Order ${orderId} sent to SQS queue`);
-          } catch (sqsError) {
-            console.error('SQS error (non-fatal):', sqsError);
+        // if (process.env.ORDER_QUEUE_URL) {
+        //   try {
+        //     await sqs.send(new SendMessageCommand({
+        //       QueueUrl: process.env.ORDER_QUEUE_URL,
+        //       MessageBody: JSON.stringify({
+        //         orderId,
+        //         userId,
+        //         userEmail,
+        //         items,
+        //         total
+        //       })
+        //     }));
+        //     console.log(`Order ${orderId} sent to SQS queue`);
+        //   } catch (sqsError) {
+        //     console.error('SQS error (non-fatal):', sqsError);
+        //   }
+        // }
+       try {
+        console.log(`Processing order ${orderId} synchronously...`);
+        // Check inventory
+        let inventoryOk = true;
+        let failureReason = '';
+        
+        for (const item of items) {
+          const result = await dynamo.send(new GetCommand({
+            TableName: 'Products',
+            Key: { productId: item.productId }
+          }));
+          
+          if (!result.Item) {
+            inventoryOk = false;
+            failureReason = `Product ${item.productId} not found`;
+            console.log(failureReason);
+            break;
+          }
+          
+          if (result.Item.stock < item.quantity) {
+            inventoryOk = false;
+            failureReason = `Insufficient stock for ${item.productName}`;
+            console.log(failureReason);
+            break;
           }
         }
+        
+        if (!inventoryOk) {
+          // Cancel order
+          await connection.execute(
+            'UPDATE orders SET status = ? WHERE id = ?',
+            ['CANCELLED', orderId]
+          );
+          console.log(`Order ${orderId} cancelled: ${failureReason}`);
+          
+        } else {
+          // Process payment (mock - 95% success)
+          const paymentSuccess = Math.random() > 0.05;
+          
+          if (!paymentSuccess) {
+            await connection.execute(
+              'UPDATE orders SET status = ? WHERE id = ?',
+              ['CANCELLED', orderId]
+            );
+            console.log(`Order ${orderId} cancelled: Payment failed`);
+            
+          } else {
+            // Reduce inventory
+            for (const item of items) {
+              await dynamo.send(new UpdateCommand({
+                TableName: 'Products',
+                Key: { productId: item.productId },
+                UpdateExpression: 'SET stock = stock - :quantity',
+                ExpressionAttributeValues: {
+                  ':quantity': item.quantity
+                }
+              }));
+              console.log(`Reduced stock for ${item.productId} by ${item.quantity}`);
+            }
+            
+            // Update to PROCESSING
+            await connection.execute(
+              'UPDATE orders SET status = ? WHERE id = ?',
+              ['PROCESSING', orderId]
+            );
+            console.log(`Order ${orderId} processed successfully`);
+          }
+        }
+        
+      } catch (error) {
+        console.error('Processing error:', error);
+        // Order stays in PENDING state
+      }
         
         return response(201, {
           success: true,
@@ -121,6 +200,7 @@ exports.handler = async (event) => {
         
       } catch (error) {
         await connection.rollback();
+        console.error('error:', err);
         throw error;
       }
     }
