@@ -1,4 +1,19 @@
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { 
+  DynamoDBDocumentClient, 
+  ScanCommand, 
+  GetCommand, 
+  PutCommand, 
+  UpdateCommand, 
+  DeleteCommand 
+} = require('@aws-sdk/lib-dynamodb');
+
+const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const dynamo = DynamoDBDocumentClient.from(client);
+
 exports.handler = async (event) => {
+
+  
   console.log('Received event:', JSON.stringify(event, null, 2));
   
   const method = event.requestContext?.http?.method || event.httpMethod;
