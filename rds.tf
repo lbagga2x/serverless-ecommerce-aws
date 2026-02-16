@@ -8,11 +8,11 @@ resource "aws_db_instance" "orders_db" {
   
   db_name  = "ecommerce"
   username = "admin"
-  password = "Test1234!"  # Change this!
+  password = var.db_password
   
   # Use your existing VPC
   db_subnet_group_name   = aws_db_subnet_group.main.name
-  vpc_security_group_ids = ["sg-0ad1f01d0b42e7ecc"]  # Your existing security group
+  vpc_security_group_ids = [var.db_security_group_id]
   
   # Public access for development
   publicly_accessible = true
@@ -33,10 +33,7 @@ resource "aws_db_instance" "orders_db" {
 # Subnet group (required for VPC)
 resource "aws_db_subnet_group" "main" {
   name       = "ecommerce-db-subnet-group"
-  subnet_ids = [
-    "subnet-0f18b65a17bca528d",
-    "subnet-0d9ef73520a589835"
-  ]
+  subnet_ids = var.db_subnet_ids
   
   tags = {
     Name = "ecommerce-db-subnet-group"

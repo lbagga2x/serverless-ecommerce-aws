@@ -11,12 +11,7 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# Variables for easy configuration
-variable "cognito_user_pool_id" {
-  description = "Cognito User Pool ID"
-  type        = string
-  default     = "us-east-1_mDAVyeD2C"  
-}
+# Import the existing API (you already did this)
 
 
 
@@ -45,7 +40,7 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
   name             = "cognito-authorizer"
 
   jwt_configuration {
-    audience = ["7lvctei96pg9kbfnfin0745odb"]  # Cognito App Client ID
+    audience = [var.cognito_client_id]  # Using variable instead of hardcoded ID
     issuer   = "https://cognito-idp.us-east-1.amazonaws.com/${var.cognito_user_pool_id}"
   }
 }
