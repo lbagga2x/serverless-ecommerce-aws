@@ -11,7 +11,7 @@ A production-ready serverless microservices backend built with AWS for managing 
   Products Service    Users Service      Orders Service
    (Lambda)            (Lambda)            (Lambda)
         ↓                   ↓               ↓       ↓
-    DynamoDB            Cognito        DynamoDB   RDS Aurora
+    DynamoDB            Cognito        DynamoDB   RDS MySql
    (Products)         (User Pool)     (Products)   (Orders)
 ```
 
@@ -25,7 +25,7 @@ A production-ready serverless microservices backend built with AWS for managing 
 **Data Layer:**
 - Amazon DynamoDB - NoSQL for products catalog & inventory (single Products table with stock field)
 - Amazon Cognito - User authentication & JWT tokens
-- Amazon RDS Aurora Serverless (MySQL) - Transactional orders
+- Amazon RDS MySql - Transactional orders
 
 **Networking & Security:**
 - VPC with private subnets - Database isolation
@@ -371,16 +371,6 @@ The function name is automatically derived from the directory name.
 - [x] DynamoDB VPC Gateway Endpoint (free)
 - [x] CloudWatch logging and monitoring
 - [x] Makefile-based deployment
-
-**Planned:**
-- [ ] API Gateway Cognito authorizers (protect /orders endpoints)
-- [ ] Async order processing with SQS (for scale)
-- [ ] Step Functions for order fulfillment workflow (PROCESSING → SHIPPED → DELIVERED)
-- [ ] CloudWatch dashboards with custom metrics
-- [ ] Infrastructure as Code with Terraform
-- [ ] CI/CD pipeline with GitHub Actions
-- [ ] Email notifications (SES) for order confirmations
-- [ ] Admin dashboard (React SPA)
 
 ## 📚 What I Learned
 
